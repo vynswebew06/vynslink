@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VYNSWEBEW</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cyan: #00f5ff;
+  --magenta: #ff00aa;
+  --yellow: #f5ff00;
+  --green: #00ff88;
+  --dark: #020408;
+  --darker: #010204;
+  --panel: rgba(0,245,255,0.03);
+  --border: rgba(0,245,255,0.15);
+  --border-hot: rgba(0,245,255,0.6);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; min-height: 100vh;
+  background: var(--dark);
+  font-family: 'Rajdhani', sans-serif;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* CUSTOM CURSOR */
+#cursor {
+  position: fixed; width: 20px; height: 20px;
+  border: 1.5px solid var(--cyan); border-radius: 50%;
+  pointer-events: none; z-index: 9999;
+  transform: translate(-50%,-50%);
+  transition: width .2s, height .2s, border-color .2s;
+  mix-blend-mode: screen;
+}
+#cursor-dot {
+  position: fixed; width: 4px; height: 4px;
+  background: var(--cyan); border-radius: 50%;
+  pointer-events: none; z-index: 9999;
+  transform: translate(-50%,-50%);
+  mix-blend-mode: screen;
+}
+body:has(.btn:hover) #cursor { width: 40px; height: 40px; border-color: var(--magenta); }
+
+/* SCANLINES */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 100;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+}
+
+/* CANVAS BG */
+#bg { position: fixed; inset: 0; z-index: 0; }
+
+/* NOISE OVERLAY */
+#noise {
+  position: fixed; inset: 0; z-index: 1;
+  opacity: 0.03; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* GRID */
+#grid-overlay {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* CORNER DECORATIONS */
+.corner {
+  position: fixed; width: 60px; height: 60px; z-index: 5; pointer-events: none;
+}
+.corner::before, .corner::after {
+  content: ''; position: absolute;
+  background: var(--cyan); opacity: 0.5;
+}
+.corner::before { width: 2px; height: 30px; }
+.corner::after { width: 30px; height: 2px; }
+.c-tl { top: 20px; left: 20px; }
+.c-tr { top: 20px; right: 20px; transform: scaleX(-1); }
+.c-bl { bottom: 20px; left: 20px; transform: scaleY(-1); }
+.c-br { bottom: 20px; right: 20px; transform: scale(-1); }
+
+/* MAIN WRAPPER */
+.wrap {
+  position: relative; z-index: 10;
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px 20px;
+}
+
+.card {
+  width: 100%; max-width: 420px;
+  position: relative;
+}
+
+/* TOP STATUS BAR */
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 28px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; color: rgba(0,245,255,0.4);
+  letter-spacing: .15em;
+}
+.status-dot-live {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--green);
+}
+.pulse-dot {
+  width: 6px; height: 6px; background: var(--green); border-radius: 50%;
+  animation: blink 1.2s ease infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* PROFILE SECTION */
+.profile {
+  display: flex; flex-direction: column; align-items: center;
+  margin-bottom: 28px; position: relative;
+}
+
+.avatar-container {
+  position: relative; width: 110px; height: 110px; margin-bottom: 18px;
+}
+
+/* Hexagonal clip */
+.avatar-hex {
+  width: 110px; height: 110px; position: relative;
+  clip-path: polygon(50% 0%,95% 25%,95% 75%,50% 100%,5% 75%,5% 25%);
+  background: linear-gradient(135deg, var(--cyan), var(--magenta));
+  padding: 2px;
+}
+.avatar-hex-inner {
+  width: 100%; height: 100%;
+  clip-path: polygon(50% 0%,95% 25%,95% 75%,50% 100%,5% 75%,5% 25%);
+  background: var(--darker);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.avatar-hex-inner img {
+  width: 106px; height: 106px;
+  clip-path: polygon(50% 0%,95% 25%,95% 75%,50% 100%,5% 75%,5% 25%);
+  object-fit: cover; display: block;
+  filter: saturate(1.1) contrast(1.05);
+}
+
+/* Rotating rings */
+.ring {
+  position: absolute; border-radius: 50%; border-style: solid;
+  top: 50%; left: 50%; transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+.ring1 {
+  width: 130px; height: 130px;
+  border-width: 1px; border-color: var(--cyan) transparent var(--cyan) transparent;
+  animation: spinRing 4s linear infinite;
+}
+.ring2 {
+  width: 148px; height: 148px;
+  border-width: 1px; border-color: transparent var(--magenta) transparent var(--magenta);
+  animation: spinRing 7s linear infinite reverse;
+}
+.ring3 {
+  width: 166px; height: 166px;
+  border-width: 1px; border-color: var(--green) transparent transparent transparent;
+  animation: spinRing 12s linear infinite;
+  border-style: dashed;
+}
+@keyframes spinRing { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+/* Status badge */
+.online-badge {
+  position: absolute; bottom: -4px; right: -4px;
+  background: var(--darker); border: 1px solid var(--green);
+  border-radius: 4px; padding: 2px 7px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; color: var(--green);
+  letter-spacing: .12em;
+}
+
+.name {
+  font-family: 'Orbitron', monospace;
+  font-size: 24px; font-weight: 900;
+  color: #fff; letter-spacing: .1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  text-shadow: 0 0 20px rgba(0,245,255,0.5), 0 0 40px rgba(0,245,255,0.2);
+  animation: glitch 6s infinite;
+}
+@keyframes glitch {
+  0%,94%,100% { text-shadow: 0 0 20px rgba(0,245,255,0.5),0 0 40px rgba(0,245,255,0.2); transform: none; }
+  95% { transform: translate(-2px,0); text-shadow: 2px 0 var(--magenta),-2px 0 var(--cyan); }
+  96% { transform: translate(2px,0); text-shadow: -2px 0 var(--magenta),2px 0 var(--cyan); }
+  97% { transform: none; text-shadow: 0 0 20px rgba(0,245,255,0.5); }
+}
+
+.bio {
+  font-size: 13px; color: rgba(0,245,255,0.45);
+  letter-spacing: .18em; text-transform: uppercase;
+  font-family: 'Share Tech Mono', monospace;
+  margin-bottom: 6px;
+}
+
+/* STAT ROW */
+.stats {
+  display: flex; gap: 20px; margin-top: 12px;
+}
+.stat {
+  display: flex; flex-direction: column; align-items: center;
+  font-family: 'Share Tech Mono', monospace;
+}
+.stat-val {
+  font-size: 15px; font-weight: 700; color: var(--cyan);
+  font-family: 'Orbitron', monospace;
+}
+.stat-label {
+  font-size: 9px; color: rgba(0,245,255,0.35); letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.stat-sep { width: 1px; background: rgba(0,245,255,0.15); align-self: stretch; }
+
+/* DIVIDER */
+.divider {
+  position: relative; margin: 22px 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), var(--magenta), var(--cyan), transparent);
+  opacity: 0.4;
+}
+.divider::before {
+  content: '//'; position: absolute;
+  left: 50%; transform: translateX(-50%) translateY(-50%);
+  background: var(--dark); padding: 0 10px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; color: rgba(0,245,255,0.4);
+  letter-spacing: .2em;
+}
+
+/* LINK BUTTONS */
+.links { display: flex; flex-direction: column; gap: 10px; }
+
+.btn {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  text-decoration: none;
+  position: relative; overflow: hidden;
+  transition: border-color .2s, background .2s;
+  cursor: none;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+.btn::before {
+  content: '';
+  position: absolute; left: -100%; top: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,245,255,0.06), transparent);
+  transition: left .4s;
+}
+.btn:hover::before { left: 100%; }
+.btn:hover { border-color: var(--border-hot); background: rgba(0,245,255,0.06); }
+.btn:hover .btn-arrow { transform: translateX(4px); color: var(--cyan); }
+.btn:active { transform: scale(.99); }
+
+/* Accent bar */
+.btn::after {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 2px;
+  opacity: 0; transition: opacity .2s;
+}
+.btn:hover::after { opacity: 1; }
+.btn-discord::after { background: #5865F2; }
+.btn-tiktok::after { background: #fff; }
+.btn-saweria::after { background: var(--yellow); }
+.btn-roblox::after { background: #E8192C; }
+
+/* Button icon */
+.btn-icon {
+  width: 40px; height: 40px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 2px;
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  position: relative;
+}
+.icon-discord { background: rgba(88,101,242,0.15); border: 1px solid rgba(88,101,242,0.3); }
+.icon-tiktok  { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); }
+.icon-saweria { background: rgba(245,255,0,0.08); border: 1px solid rgba(245,255,0,0.2); }
+.icon-roblox  { background: rgba(232,25,44,0.12); border: 1px solid rgba(232,25,44,0.25); }
+
+.btn-info { flex: 1; }
+.btn-platform {
+  display: block; font-family: 'Orbitron', monospace;
+  font-size: 12px; font-weight: 700; color: #e0e8ff;
+  letter-spacing: .08em; text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.btn-desc {
+  display: block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; color: rgba(0,245,255,0.35);
+  letter-spacing: .1em;
+}
+.btn-arrow {
+  font-size: 18px; color: rgba(0,245,255,0.3);
+  transition: transform .2s, color .2s;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+/* TAGS */
+.tags {
+  display: flex; gap: 8px; justify-content: center;
+  flex-wrap: wrap; margin-top: 22px;
+}
+.tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; letter-spacing: .15em; text-transform: uppercase;
+  padding: 5px 12px; border-radius: 1px;
+  border: 1px solid; position: relative;
+  clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+}
+.tag-c { color: var(--cyan); border-color: rgba(0,245,255,0.25); background: rgba(0,245,255,0.05); }
+.tag-m { color: var(--magenta); border-color: rgba(255,0,170,0.25); background: rgba(255,0,170,0.05); }
+.tag-g { color: var(--green); border-color: rgba(0,255,136,0.25); background: rgba(0,255,136,0.05); }
+.tag-y { color: var(--yellow); border-color: rgba(245,255,0,0.25); background: rgba(245,255,0,0.05); }
+
+/* FOOTER */
+.footer {
+  text-align: center; margin-top: 24px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px; color: rgba(0,245,255,0.18);
+  letter-spacing: .2em; text-transform: uppercase;
+}
+.footer span { color: rgba(0,245,255,0.4); }
+
+/* SCAN LINE ANIMATION ON CARD */
+.scan-line {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.15; animation: scanDown 4s linear infinite;
+  pointer-events: none; z-index: 20;
+}
+@keyframes scanDown {
+  0% { top: 0; opacity: 0; }
+  5% { opacity: 0.15; }
+  95% { opacity: 0.15; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ENTRY ANIMATION */
+.card { animation: fadeIn .8s ease both; }
+@keyframes fadeIn {
+  from { opacity:0; transform: translateY(20px); }
+  to { opacity:1; transform: translateY(0); }
+}
+.btn:nth-child(1){animation:slideIn .6s .1s ease both}
+.btn:nth-child(2){animation:slideIn .6s .2s ease both}
+.btn:nth-child(3){animation:slideIn .6s .3s ease both}
+.btn:nth-child(4){animation:slideIn .6s .4s ease both}
+@keyframes slideIn {
+  from{opacity:0;transform:translateX(-20px)}
+  to{opacity:1;transform:translateX(0)}
+}
+
+/* TYPING ANIMATION */
+.typing::after {
+  content:'_'; animation: typeBlink .8s step-end infinite;
+  color: var(--cyan);
+}
+@keyframes typeBlink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* MOBILE */
+@media(max-width:480px){
+  .name{font-size:20px}
+  .ring3{display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-dot"></div>
+
+<canvas id="bg"></canvas>
+<div id="noise"></div>
+<div id="grid-overlay"></div>
+
+<div class="corner c-tl"></div>
+<div class="corner c-tr"></div>
+<div class="corner c-bl"></div>
+<div class="corner c-br"></div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="scan-line"></div>
+
+    <div class="status-bar">
+      <span>SYS_v2.4.1</span>
+      <span class="status-dot-live">
+        <span class="pulse-dot"></span>
+        ONLINE
+      </span>
+      <span id="clock">00:00:00</span>
+    </div>
+
+    <div class="profile">
+      <div class="avatar-container">
+        <div class="ring ring1"></div>
+        <div class="ring ring2"></div>
+        <div class="ring ring3"></div>
+        <div class="avatar-hex">
+          <div class="avatar-hex-inner">
+            <img src="data:image/jpeg;base64,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" alt="Vyn">
+          </div>
+        </div>
+        <div class="online-badge">● ONLINE</div>
+      </div>
+
+      <h1 class="name typing">VYNSWEBEW</h1>
+      <p class="bio">// GAMER · CREATOR · ROBLOX</p>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-val">4</span>
+          <span class="stat-label">Links</span>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat">
+          <span class="stat-val" id="visitor-count">--</span>
+          <span class="stat-label">Visits</span>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat">
+          <span class="stat-val">24/7</span>
+          <span class="stat-label">Active</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="links">
+      <a href="https://discord.gg/vxtpDxWG" class="btn btn-discord">
+        <div class="btn-icon icon-discord">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#7289DA"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.079.113 18.1.133 18.115a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+        </div>
+        <div class="btn-info">
+          <span class="btn-platform">Discord</span>
+          <span class="btn-desc">JOIN_SERVER &gt; discord.gg/vxtpDxWG</span>
+        </div>
+        <span class="btn-arrow">→</span>
+      </a>
+
+      <a href="https://www.tiktok.com/@way.yau?_r=1&_t=ZS-95gP2fRgRtA" class="btn btn-tiktok">
+        <div class="btn-icon icon-tiktok">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15.3a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V9.01a8.16 8.16 0 0 0 4.77 1.52V7.07a4.85 4.85 0 0 1-1.01-.38z"/></svg>
+        </div>
+        <div class="btn-info">
+          <span class="btn-platform">TikTok</span>
+          <span class="btn-desc">FOLLOW &gt; @way.yau</span>
+        </div>
+        <span class="btn-arrow">→</span>
+      </a>
+
+      <a href="https://saweria.co/widgets/alert?streamKey=ae89694dd1084efc84c52a56206b8aa9" class="btn btn-saweria">
+        <div class="btn-icon icon-saweria">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#f5ff00"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm.75 14.25h-1.5v-4.5h1.5v4.5zm0-6h-1.5v-1.5h1.5v1.5z"/></svg>
+        </div>
+        <div class="btn-info">
+          <span class="btn-platform">Saweria</span>
+          <span class="btn-desc">SUPPORT_ME &gt; saweria.co</span>
+        </div>
+        <span class="btn-arrow">→</span>
+      </a>
+
+      <a href="https://www.roblox.com/id/users/9778893219/profile" class="btn btn-roblox">
+        <div class="btn-icon icon-roblox">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#E8192C"><path d="M4.144 0L0 15.851 8.386 18l1.319-5.025 4.947 1.295L13.333 24 24 21.12 19.856 0zm12.49 13.196l-6.875-1.8.9-3.427 6.875 1.8z"/></svg>
+        </div>
+        <div class="btn-info">
+          <span class="btn-platform">Roblox</span>
+          <span class="btn-desc">VIEW_PROFILE &gt; ID#9778893219</span>
+        </div>
+        <span class="btn-arrow">→</span>
+      </a>
+    </div>
+
+    <div class="tags">
+      <span class="tag tag-c">Gamer</span>
+      <span class="tag tag-m">Creator</span>
+      <span class="tag tag-g">Active</span>
+      <span class="tag tag-y">Roblox</span>
+    </div>
+
+    <div class="footer">
+      &copy; 2025 <span>VYNSWEBEW</span> &mdash; ALL SYSTEMS OPERATIONAL
+    </div>
+  </div>
+</div>
+
+<script>
+// Custom cursor
+var cur=document.getElementById('cursor'),dot=document.getElementById('cursor-dot');
+var mx=0,my=0,cx=0,cy=0;
+document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;dot.style.left=mx+'px';dot.style.top=my+'px';});
+(function animCursor(){cx+=(mx-cx)*.12;cy+=(my-cy)*.12;cur.style.left=cx+'px';cur.style.top=cy+'px';requestAnimationFrame(animCursor);})();
+
+// Clock
+function updateClock(){
+  var n=new Date();
+  document.getElementById('clock').textContent=
+    String(n.getHours()).padStart(2,'0')+':'+
+    String(n.getMinutes()).padStart(2,'0')+':'+
+    String(n.getSeconds()).padStart(2,'0');
+}
+updateClock();setInterval(updateClock,1000);
+
+// Visitor counter (localStorage)
+var vc=parseInt(localStorage.getItem('vyn_visits')||'0')+1;
+localStorage.setItem('vyn_visits',vc);
+document.getElementById('visitor-count').textContent=vc;
+
+// Particle/Matrix BG
+var canvas=document.getElementById('bg'),ctx=canvas.getContext('2d');
+function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+resize();window.addEventListener('resize',resize);
+
+// Particles
+var particles=[];
+for(var i=0;i<60;i++){
+  particles.push({
+    x:Math.random()*canvas.width,
+    y:Math.random()*canvas.height,
+    vx:(Math.random()-.5)*.4,
+    vy:(Math.random()-.5)*.4,
+    r:Math.random()*1.8+.3,
+    a:Math.random()*.5+.1,
+    color:Math.random()>.5?'0,245,255':'255,0,170',
+    pulse:Math.random()*Math.PI*2,
+    pspeed:.02+Math.random()*.03
+  });
+}
+
+// Matrix rain drops
+var cols=Math.floor(canvas.width/18);
+var drops=Array.from({length:cols},()=>Math.random()*canvas.height/14);
+var chars='01ABCDEF#@!?><+-=~';
+
+function drawBg(){
+  ctx.fillStyle='rgba(2,4,8,0.15)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // Matrix rain
+  ctx.font='11px "Share Tech Mono"';
+  for(var i=0;i<drops.length;i++){
+    var ch=chars[Math.floor(Math.random()*chars.length)];
+    var alpha=Math.random()*.4+.05;
+    ctx.fillStyle='rgba(0,245,255,'+alpha+')';
+    ctx.fillText(ch,i*18,drops[i]*14);
+    if(drops[i]*14>canvas.height&&Math.random()>.975) drops[i]=0;
+    drops[i]+=.5;
+  }
+
+  // Particles with connections
+  particles.forEach(function(p,i){
+    p.x+=p.vx; p.y+=p.vy; p.pulse+=p.pspeed;
+    if(p.x<0||p.x>canvas.width) p.vx*=-1;
+    if(p.y<0||p.y>canvas.height) p.vy*=-1;
+    var a=p.a*(0.6+Math.sin(p.pulse)*0.4);
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle='rgba('+p.color+','+a+')';ctx.fill();
+    // Connect nearby
+    for(var j=i+1;j<particles.length;j++){
+      var p2=particles[j];
+      var dx=p.x-p2.x,dy=p.y-p2.y,dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<90){
+        ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p2.x,p2.y);
+        ctx.strokeStyle='rgba(0,245,255,'+(0.08*(1-dist/90))+')';
+        ctx.lineWidth=.5;ctx.stroke();
+      }
+    }
+  });
+
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+</script>
+</body>
+</html>
